@@ -16,13 +16,13 @@ func CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err, "message": "please enter your data properly"})
 		return
 	}
-	if &user.Username == nil {
-		c.JSON(400, gin.H{"message": "please provide a username"})
-	} else if &user.Email == nil {
-		c.JSON(400, gin.H{"message": "please provide a email"})
-	} else {
-		c.JSON(400, gin.H{"message": "please provide a password"})
-	}
+	// if &user.Username == nil {
+	// 	c.JSON(400, gin.H{"message": "please provide a username"})
+	// } else if &user.Email == nil {
+	// 	c.JSON(400, gin.H{"message": "please provide a email"})
+	// } else {
+	// 	c.JSON(400, gin.H{"message": "please provide a password"})
+	// }
 	var existingUser models.User
 	err = initializers.DB.Where("email=?", &user.Email).First(&existingUser).Error
 
@@ -35,6 +35,7 @@ func CreateUser(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(400, gin.H{"error": err, "message": "error in creating new user"})
+		return
 	}
 
 	c.JSON(200, gin.H{"user": user, "message": "user created successfully"})
