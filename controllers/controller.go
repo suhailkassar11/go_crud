@@ -1,10 +1,17 @@
 package controllers
 
 import (
+	"os"
+	"time"
+
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/suhailkassar11/go-crud/initializers"
 	"github.com/suhailkassar11/go-crud/models"
+	"golang.org/x/crypto/bcrypt"
 )
+
+var SecretKey = os.Getenv("JWT_SECRET")
 
 func CreateUser(c *gin.Context) {
 
@@ -16,13 +23,7 @@ func CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err, "message": "please enter your data properly"})
 		return
 	}
-	// if &user.Username == nil {
-	// 	c.JSON(400, gin.H{"message": "please provide a username"})
-	// } else if &user.Email == nil {
-	// 	c.JSON(400, gin.H{"message": "please provide a email"})
-	// } else {
-	// 	c.JSON(400, gin.H{"message": "please provide a password"})
-	// }
+
 	var existingUser models.User
 	err = initializers.DB.Where("email=?", &user.Email).First(&existingUser).Error
 
@@ -30,6 +31,13 @@ func CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err, "message": "user already exists"})
 		return
 	}
+
+	hasedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err, "message": "password hashing failed"})
+	}
+
+	user.Password = string(hasedPassword)
 
 	err = initializers.DB.Create(&user).Error
 
@@ -40,6 +48,43 @@ func CreateUser(c *gin.Context) {
 
 	c.JSON(200, gin.H{"user": user, "message": "user created successfully"})
 
+}
+
+func LoginUser(c *gin.Context) {
+	var loginUser models.UserLogin
+	err := c.BindJSON(&loginUser)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err, "message": "please enter your credentials"})
+		return
+	}
+
+	var user models.User
+	err = initializers.DB.Where("email=?", loginUser.Email).First(&user).Error
+	if err != nil {
+		c.JSON(400, gin.H{"error": err, "message": "invalid email or password"})
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginUser.Password))
+	if err != nil {
+		c.JSON(400, gin.H{"error": err, "message": "hashing password is invalid"})
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":    user.ID,
+		"email": user.Email,
+		"exp":   time.Now().Add(time.Hour * 72).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(SecretKey))
+
+	if err != nil {
+		c.JSON(400, gin.H{"error": err, "token": tokenString, "message": "error in generating token"})
+		return
+	}
+
+	c.JSON(200, gin.H{"token": tokenString, "message": "Login successfull"})
 }
 
 func FindAllUser(c *gin.Context) {

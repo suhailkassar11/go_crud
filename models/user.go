@@ -8,3 +8,8 @@ type User struct {
 	Password string `json:"password" gorm:"not null" validate:"required"`
 	gorm.Model
 }
+
+type UserLogin struct {
+	Email    string `json:"email" gorm:"not null" validate:required"`
+	Password string `json:"password" validate:"required"`
+}
